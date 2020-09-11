@@ -19,10 +19,10 @@ class TestDefocusLocalMeans(TestCase):
         result = defocus_local_means(im)
 
         expected = np.array(
-           [[ 3. ,  4.  ,  2.75,  1.75,  7.  ],
-            [ 4. ,  2.25,  4.25,  3.75,  2.5 ],
-            [ 3. ,  5.25,  3.  ,  3.5 ,  2.5 ],
-            [ 4.5,  4.5 ,  4.25,  2.75,  3.5 ]])
+            [[3., 4., 2.75, 1.75, 7.],
+             [4., 2.25, 4.25, 3.75, 2.5],
+             [3., 5.25, 3., 3.5, 2.5],
+             [4.5, 4.5, 4.25, 2.75, 3.5]])
 
         assert_allclose(result, expected)
 
