@@ -4,6 +4,11 @@ rule.py : Contains structure to create fuzzy rules.
 Most notably, contains the `Rule` class which is used to connect antecedents
 with consequents in a `ControlSystem`.
 """
+from __future__ import annotations
+
+from typing import (Callable, ClassVar, Collection, Dict, List, Optional,
+                    Sequence, TYPE_CHECKING, Tuple, Union)
+
 import networkx as nx
 import numpy as np
 
@@ -47,10 +52,19 @@ class Rule(object):
     `.consequent`, and `.label` variables.
     """
 
-    aggregate_firing = StatefulProperty(None)
+    aggregate_firing: ClassVar[Dict[ControlSystemSimulation, float]] \
+        = StatefulProperty(None)
 
-    def __init__(self, antecedent=None, consequent=None, label=None,
-                 and_func=np.fmin, or_func=np.fmax):
+    _aggregation_methods: FuzzyAggregationMethods
+    _antecedent: Optional[TermPrimitive]
+    _consequent: Optional[List[Union[Term, WeightedTerm]]]
+
+    def __init__(self,
+                 antecedent: TermPrimitive = None,
+                 consequent: Collection[Union[Term, WeightedTerm]] = None,
+                 label: str = None,
+                 and_func: Callable[[float, ...], float] = np.fmin,
+                 or_func: Callable[[float, ...], float] = np.fmax):
         """
         Rule in a fuzzy system, connecting antecedent(s) to consequent(s).
 
@@ -118,14 +132,14 @@ class Rule(object):
                     self.or_func.__name__)
 
     @property
-    def and_func(self):
+    def and_func(self) -> Callable[[float, ...], float]:
         """
         Aggregation function for AND relationships. Default is `min`.
         """
         return self._aggregation_methods.and_func
 
     @and_func.setter
-    def and_func(self, newfunc):
+    def and_func(self, newfunc: Callable[[float, ...], float]) -> None:
         """
         Method to interactively set the AND aggregation function.
         """
@@ -137,14 +151,14 @@ class Rule(object):
         self._aggregation_methods.and_func = newfunc
 
     @property
-    def or_func(self):
+    def or_func(self) -> Callable[[float, ...], float]:
         """
         Aggregation function for OR relationships. Default is `max`.
         """
         return self._aggregation_methods.or_func
 
     @or_func.setter
-    def or_func(self, newfunc):
+    def or_func(self, newfunc: Callable[[float, ...], float]) -> None:
         """
         Method to interactively set the OR aggregation function.
         """
@@ -156,7 +170,7 @@ class Rule(object):
         self._aggregation_methods.or_func = newfunc
 
     @property
-    def antecedent(self):
+    def antecedent(self) -> TermPrimitive:
         """
         Antecedent clause, consisting of multiple term(s) in this fuzzy Rule.
         """
@@ -165,7 +179,7 @@ class Rule(object):
         return self._antecedent
 
     @antecedent.setter
-    def antecedent(self, value):
+    def antecedent(self, value: TermPrimitive) -> None:
         """
         Method to interactively set Antecedent term(s).
         """
@@ -175,7 +189,7 @@ class Rule(object):
         self._antecedent = value
 
     @property
-    def antecedent_terms(self):
+    def antecedent_terms(self) -> List[TermPrimitive]:
         """
         Utility function to list all Antecedent terms present in this clause.
         """
@@ -195,7 +209,7 @@ class Rule(object):
         return terms
 
     @property
-    def consequent(self):
+    def consequent(self) -> List[Union[Term, WeightedTerm]]:
         """
         Consequent clause, consisting of multiple term(s) in this fuzzy Rule.
         """
@@ -204,7 +218,9 @@ class Rule(object):
         return self._consequent
 
     @consequent.setter
-    def consequent(self, value):
+    def consequent(self, value: Union[Term,
+                                      WeightedTerm,
+                                      Sequence[Term, WeightedTerm]]) -> None:
         """
         Accept consequents in four formats:
 
@@ -238,7 +254,7 @@ class Rule(object):
                     raise ValueError("Unexpected consequent type")
 
     @property
-    def graph_n(self):
+    def graph_n(self) -> Tuple[nx.DiGraph, List[List[str]]]:
         graph = nx.DiGraph()
         # Link all antecedents to me by decomposing
         # TermAggregate down to just Terms
@@ -318,3 +334,7 @@ class Rule(object):
         To run this all names of the Membership functions needs to unique.
         """
         return ControlSystemVisualizer(self).view_n()
+
+
+if TYPE_CHECKING:
+    from .controlsystem import ControlSystemSimulation

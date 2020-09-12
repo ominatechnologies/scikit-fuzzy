@@ -105,7 +105,8 @@ class FuzzyVariableVisualizer(object):
                 for key, term in self.fuzzy_var.terms.items():
                     if key in cut_mfs:
                         y = max(y, interp_membership(self.fuzzy_var.universe,
-                                                     term.mf, crisp_value))
+                                                     term.mf,
+                                                     crisp_value))
 
                 # Small cut values are hard to see, so simply set them to 1
                 if y < 0.1:

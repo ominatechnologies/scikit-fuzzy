@@ -1,7 +1,12 @@
 """
 controlsystem.py : Framework for the new fuzzy logic control system API.
 """
+from __future__ import annotations
+
 from collections import OrderedDict
+from typing import (
+    Dict, Iterable, Iterator, List, Mapping, Optional, Tuple, Union,
+)
 from warnings import warn
 
 import networkx as nx
@@ -30,8 +35,13 @@ class ControlSystem(object):
         fuzzy Rules (see ``skfuzzy.control.Rule``). This is optional. If
         omitted the ControlSystem can be built interactively.
     """
+    __slots__ = ["colors", "graph", "graph_n"]
 
-    def __init__(self, rules=None):
+    colors: List[List[str]]
+    graph: nx.DiGraph
+    graph_n: Tuple[nx.Graph, List[List[str]]]
+
+    def __init__(self, rules: Union[Iterable[Rule], Rule] = None):
         """
         Initialization method for the fuzzy ControlSystem object.
         """ + '\n'.join(ControlSystem.__doc__.split('\n')[1:])
@@ -39,7 +49,7 @@ class ControlSystem(object):
 
         # Construct a system from provided rules, if given
         if rules is not None:
-            if hasattr(rules, '__iter__'):
+            if isinstance(rules, Iterable):
                 for rule in rules:
                     self.addrule(rule)
             elif isinstance(rules, Rule):
@@ -49,7 +59,7 @@ class ControlSystem(object):
                                  " `rules` argument, got '{}'.".format(rules))
 
     @property
-    def rules(self):
+    def rules(self) -> Iterable[Rule]:
         """
         Generator which yields the rules in the system in calculation order.
 
@@ -66,21 +76,21 @@ class ControlSystem(object):
         return RuleOrderGenerator(self)
 
     @property
-    def antecedents(self):
+    def antecedents(self) -> Iterator[Antecedent]:
         """Generator which yields Antecedents in the system."""
         for node in self.graph.nodes():
             if isinstance(node, Antecedent):
                 yield node
 
     @property
-    def consequents(self):
+    def consequents(self) -> Iterator[Consequent]:
         """Generator which yields Consequents in the system."""
         for node in self.graph.nodes():
             if isinstance(node, Consequent):
                 yield node
 
     @property
-    def fuzzy_variables(self):
+    def fuzzy_variables(self) -> Iterator[FuzzyVariable]:
         """
         Generator which yields fuzzy variables in the system.
 
@@ -90,7 +100,7 @@ class ControlSystem(object):
             if isinstance(node, FuzzyVariable):
                 yield node
 
-    def addrule(self, rule):
+    def addrule(self, rule: Rule) -> None:
         """
         Add a new rule to the system.
         """
@@ -112,7 +122,7 @@ class ControlSystem(object):
         except Exception:
             pass
 
-    def add_rule_n(self, rule):
+    def add_rule_n(self, rule: Rule) -> None:
         graph, color = rule.graph_n
         new_graph = nx.Graph()
         if 'graph_n' in dir(self):
@@ -127,14 +137,14 @@ class ControlSystem(object):
             self.colors.extend(color)
         self.graph_n = new_graph, self.colors
 
-    def view(self):
+    def view(self) -> None:
         """
         View a representation of the system NetworkX graph.
         """
         fig, ax = ControlSystemVisualizer(self).view()
         fig.show()
 
-    def view_n(self):
+    def view_n(self) -> None:
         """
         View a representation of the system NetworkX graph.
         """
@@ -155,11 +165,11 @@ class _InputAcceptor(object):
     term will be set to 1 (and 0 for the others).
     """
 
-    def __init__(self, simulation):
+    def __init__(self, simulation: ControlSystemSimulation):
         assert isinstance(simulation, ControlSystemSimulation)
         self.sim = simulation
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: str, value: Union[float, np.ndarray]):
         # Find the antecedent we should set the input for
         matches = [n for n in self.sim.ctrl.graph.nodes()
                    if isinstance(n, Antecedent) and n.label == key]
@@ -225,7 +235,7 @@ class _InputAcceptor(object):
             out += "{0} : {1}\n".format(key, val)
         return out
 
-    def _update_to_current(self):
+    def _update_to_current(self) -> None:
         # Private method, used to store the current state of the system in a
         # cache, 'current', accessible before and after the unique_id changes.
         if self.sim.unique_id == 'current':
@@ -238,7 +248,7 @@ class _InputAcceptor(object):
         for antecedent in matches:
             antecedent.input[self.sim] = antecedent.input['current']
 
-    def _get_inputs(self):
+    def _get_inputs(self) -> OrderedDict[str, float]:
         """
         Find and return all antecedent inputs available.
         """
@@ -279,9 +289,42 @@ class ControlSystemSimulation(object):
     lenient : boolean, optional, defaults to True
         When true, sparse rules will not cause exceptions.
     """
+    __slots__ = [
+        "_array_inputs",
+        "_array_shape",
+        "_calculated",
+        "_flush_after_run",
+        "_run",
+        "cache",
+        "clip_to_bounds",
+        "ctrl",
+        "input",
+        "lenient",
+        "output",
+        "unique_id",
+    ]
 
-    def __init__(self, control_system, clip_to_bounds=True, cache=True,
-                 flush_after_run=1000, lenient=True):
+    _array_inputs: bool
+    _array_shape: Optional[Tuple[int, ...]]
+    _calculated: List[str]
+    _flush_after_run: int
+    _run: int
+
+    cache: bool
+    clip_to_bounds: bool
+    ctrl: ControlSystem
+    input: _InputAcceptor
+    lenient: bool
+    output: OrderedDict[str, float]
+    unique_id: str
+
+    def __init__(self,
+                 control_system: ControlSystem,
+                 *,
+                 clip_to_bounds: bool = True,
+                 cache: bool = True,
+                 flush_after_run: int = 1000,
+                 lenient: bool = True):
         """
         Initialize a new ControlSystemSimulation.
         """ + '\n'.join(ControlSystemSimulation.__doc__.split('\n')[1:])
@@ -302,7 +345,7 @@ class ControlSystemSimulation(object):
         self._run = 0
         self._flush_after_run = flush_after_run
 
-    def _update_unique_id(self):
+    def _update_unique_id(self) -> None:
         """
         Unique hash of this control system including a specific set of inputs.
 
@@ -319,10 +362,10 @@ class ControlSystemSimulation(object):
             self.unique_id = (str(id(self.ctrl)) +
                               str(hash(self._get_inputs().__repr__())))
 
-    def _get_inputs(self):
+    def _get_inputs(self) -> OrderedDict[str, float]:
         return self.input._get_inputs()
 
-    def inputs(self, input_dict):
+    def inputs(self, input_dict: Mapping[str, float]) -> None:
         """
         Convenience method to accept multiple inputs to antecedents.
 
@@ -337,7 +380,7 @@ class ControlSystemSimulation(object):
         for label, value in input_dict.items():
             self.input[label] = value
 
-    def compute(self):
+    def compute(self) -> None:
         """
         Compute the fuzzy system.
         """
@@ -389,7 +432,7 @@ class ControlSystemSimulation(object):
         if self._run % self._flush_after_run == 0:
             self._reset_simulation()
 
-    def defuzz_consequents(self):
+    def defuzz_consequents(self) -> Dict[str, float]:
         """Collect and return the defuzzified consequents."""
         results = {}
         for consequent in self.ctrl.consequents:
@@ -404,7 +447,7 @@ class ControlSystemSimulation(object):
             results[consequent.label] = consequent.output[self]
         return results
 
-    def compute_rule(self, rule):
+    def compute_rule(self, rule: Rule) -> None:
         """
         Implement rule according to Mamdani inference.
 
@@ -452,7 +495,7 @@ class ControlSystemSimulation(object):
 
             term.cuts[self][rule.label] = term.membership_value[self]
 
-    def reset(self):
+    def reset(self) -> None:
         """
         Reset the simulation.
 
@@ -460,7 +503,7 @@ class ControlSystemSimulation(object):
         """
         self._reset_simulation()
 
-    def _reset_simulation(self):
+    def _reset_simulation(self) -> None:
         """
         Clear temporary data from simulation objects.
 
@@ -489,7 +532,7 @@ class ControlSystemSimulation(object):
         self._calculated = []
         self._run = 0
 
-    def _clear_outputs(self):
+    def _clear_outputs(self) -> None:
         """
         Clears all downstream results/firings after Antecedents.
         """
@@ -511,7 +554,7 @@ class ControlSystemSimulation(object):
         self._calculated = []
         self._run = 0
 
-    def print_state(self):
+    def print_state(self) -> None:
         """
         Print info about the inner workings of a ControlSystemSimulation.
         """
@@ -583,8 +626,12 @@ class CrispValueCalculator(object):
     sim : ControlSystemSimulation
         The simulation which holds all necessary data for this calculation.
     """
+    __slots__ = ["var", "sim"]
 
-    def __init__(self, fuzzy_var, sim):
+    var: FuzzyVariable
+    sim: ControlSystemSimulation
+
+    def __init__(self, fuzzy_var: FuzzyVariable, sim: ControlSystemSimulation):
         """
         Initialization method for CrispValueCalculator.
         """ + '\n'.join(CrispValueCalculator.__doc__.split('\n')[1:])
@@ -593,7 +640,7 @@ class CrispValueCalculator(object):
         self.var = fuzzy_var
         self.sim = sim
 
-    def defuzz(self):
+    def defuzz(self) -> Union[float, np.ndarray]:
         """Derive crisp value based on membership of term(s)."""
         if not self.sim._array_inputs:
             ups_universe, output_mf, term_mfs = self.find_memberships()
@@ -620,7 +667,7 @@ class CrispValueCalculator(object):
 
             return output
 
-    def fuzz(self, value):
+    def fuzz(self, value: float) -> None:
         """
         Propagate crisp value down to adjectives by calculating membership.
 
@@ -640,7 +687,9 @@ class CrispValueCalculator(object):
                 term.membership_value[self.sim] = \
                     interp_membership(self.var.universe, term.mf, value)
 
-    def find_memberships(self):
+    def find_memberships(self) -> Tuple[np.ndarray,
+                                        np.ndarray,
+                                        Dict[str, np.ndarray]]:
         """
         First we have to upsample the universe of self.var in order to add the
         key points of the membership function based on the activation level
@@ -683,7 +732,7 @@ class CrispValueCalculator(object):
 
         return new_universe, output_mf, term_mfs
 
-    def find_memberships_nd(self, idx):
+    def find_memberships_nd(self, idx: int) -> Tuple[np.ndarray, np.ndarray]:
         """
         Index-aware version of find_memberships(), expecting to select a
         particular set of membership values from an array input, given input
@@ -739,8 +788,24 @@ class RuleOrderGenerator(object):
     out : Rule
         Fuzzy rules in computation order.
     """
+    __slots__ = [
+        "_cache",
+        "_cached_graph",
+        "all_graph",
+        "all_rules",
+        "calced_graph",
+        "control_system",
+    ]
 
-    def __init__(self, control_system):
+    _cache: List
+    _cached_graph: Optional[nx.DiGraph]
+
+    all_graph: nx.DiGraph
+    all_rules: List[Rule]
+    calced_graph: nx.DiGraph
+    control_system: ControlSystem
+
+    def __init__(self, control_system: ControlSystem):
         """
         Generator to yield rules in the correct order for calculation.
         """ + '\n'.join(RuleOrderGenerator.__doc__.split('\n')[1:6])
@@ -771,7 +836,7 @@ class RuleOrderGenerator(object):
         else:
             assert n == len(self.all_rules) - 1, "Not all rules exposed"
 
-    def _init_state(self):
+    def _init_state(self) -> None:
         # This graph will represent what's been calculated so far. We
         # initialize it to just the antecedents as they, by definition, already
         # have fuzzy values
@@ -787,7 +852,7 @@ class RuleOrderGenerator(object):
             if isinstance(node, Rule):
                 self.all_rules.append(node)
 
-    def _process_rules(self, rules):
+    def _process_rules(self, rules: List[Rule]) -> Iterable[Rule]:
         # Recursive function to process rules in the correct firing order.
         len_rules = len(rules)
         skipped_rules = []
@@ -820,7 +885,7 @@ class RuleOrderGenerator(object):
                 for r in self._process_rules(skipped_rules):
                     yield r
 
-    def _can_calc_rule(self, rule):
+    def _can_calc_rule(self, rule: Rule) -> bool:
         # Check that we've exposed all inputs to this rule by ensuring
         # the predecessor-degree of each predecessor node is the same
         # in both the calculation graph and overall graph

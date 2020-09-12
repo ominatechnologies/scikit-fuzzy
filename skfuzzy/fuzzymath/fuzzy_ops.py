@@ -2,6 +2,10 @@
 fuzzy_ops.py : Package of general operations on fuzzy sets, fuzzy membership
                functions, and their associated universe variables.
 """
+from __future__ import annotations
+
+from typing import List, Union
+
 import numpy as np
 
 
@@ -526,7 +530,11 @@ def maxprod_composition(s, r):
     return t
 
 
-def interp_membership(x, xmf, xx, zero_outside_x=True):
+def interp_membership(x: np.ndarray,
+                      xmf: np.ndarray,
+                      xx: Union[float, np.ndarray],
+                      *,
+                      zero_outside_x: bool = True):
     """
     Find the degree of membership ``u(xx)`` for a given value of ``x = xx``.
 
@@ -570,7 +578,7 @@ def interp_membership(x, xmf, xx, zero_outside_x=True):
     return np.interp(xx, x, xmf, left=kwargs[0], right=kwargs[1])
 
 
-def interp_universe(x, xmf, y):
+def interp_universe(x: np.ndarray, xmf: np.ndarray, y: float) -> List[float]:
     """
     Find interpolated universe value(s) for a given fuzzy membership value.
 
@@ -617,7 +625,9 @@ def interp_universe(x, xmf, y):
     return [n for n in set(xx.tolist())]
 
 
-def _interp_universe_fast(x, xmf, y):
+def _interp_universe_fast(x: np.ndarray,
+                          xmf: np.ndarray,
+                          y: float) -> np.ndarray:
     """
     Find interpolated universe value(s) for a given fuzzy membership value.
 

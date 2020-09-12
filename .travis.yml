@@ -11,8 +11,6 @@ python:
     - 3.8
 
 env:
-    - ENV="python=3.5 numpy"
-    - ENV="python=3.6 numpy"
     - ENV="python=3.7 numpy"
     - ENV="python=3.8 numpy"
 

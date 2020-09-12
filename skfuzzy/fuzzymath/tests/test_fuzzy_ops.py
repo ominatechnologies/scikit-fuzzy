@@ -319,7 +319,7 @@ def test_interp_membership():
     mfx[0] = 0.2
     assert_allclose([0, 0], interp_membership(x, mfx, [-11, 5]))
     assert_allclose([0.2, 0.7], interp_membership(x, mfx, [-11, 5],
-                                                  False))
+                                                  zero_outside_x=False))
 
 
 def test_interp_universe():
