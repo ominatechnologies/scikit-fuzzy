@@ -519,8 +519,8 @@ class ControlSystemSimulation(object):
         rule_number = {}
         for rn, r in enumerate(log_state.rules):
             assert isinstance(r, Rule)
-            rule_number[r] = "RULE #'{}'".format(rn)
-            print("RULE #{:d}:\n  {!s}\n".format(rn, r))
+            rule_number[r] = "RULE #{}".format(rn)
+            print("RULE #{}:\n  {!s}\n".format(rn, r))
 
             print("  Aggregation (IF-clause):")
             for cnt in range(len(
@@ -551,8 +551,8 @@ class ControlSystemSimulation(object):
         # rule_number = {}
         # for rn, r in enumerate(self.ctrl.rules):
         #     assert isinstance(r, Rule)
-        #     rule_number[r] = "RULE #%d" % rn
-        #     print("RULE #%d:\n  %s\n" % (rn, r))
+        #     rule_number[r] = "RULE #{}".format(rn)
+        #     print("RULE #{}:\n  {}\n".format(rn, r))
         #
         #     print("  Aggregation (IF-clause):")
         #     for term in r.antecedent_terms:
@@ -666,7 +666,7 @@ class LogStateControlSystemSimulation(object):
         rule_number = {}
         for rn, r in enumerate(self.sim.ctrl.rules):
             assert isinstance(r, Rule)
-            rule_number[r] = "RULE #%d" % rn
+            rule_number[r] = "RULE #{}".format(rn)
             dict_rules[rule_number[r]] = r
         return dict_rules
 
@@ -682,7 +682,7 @@ class LogStateControlSystemSimulation(object):
         rule_number = {}
         for rn, r in enumerate(self.sim.ctrl.rules):
             assert isinstance(r, Rule)
-            rule_number[r] = "RULE #%d" % rn
+            rule_number[r] = "RULE #{}".format(rn)
             for term in r.antecedent_terms:
                 assert isinstance(term, Term)
             dict_rules_aggregation_if_membership_values[rule_number[r]] = \
@@ -702,7 +702,7 @@ class LogStateControlSystemSimulation(object):
         rule_number = {}
         for rn, r in enumerate(self.sim.ctrl.rules):
             assert isinstance(r, Rule)
-            rule_number[r] = "RULE #%d" % rn
+            rule_number[r] = "RULE #{}".format(rn)
             for term in r.antecedent_terms:
                 assert isinstance(term, Term)
             dict_rules_aggregation_if_aggregate_firing[rule_number[r]] = \
@@ -721,7 +721,7 @@ class LogStateControlSystemSimulation(object):
         rule_number = {}
         for rn, r in enumerate(self.sim.ctrl.rules):
             assert isinstance(r, Rule)
-            rule_number[r] = "RULE #%d" % rn
+            rule_number[r] = "RULE #{}".format(rn)
             for c in r.consequent:
                 assert isinstance(c, WeightedTerm)
             dict_rules_activation_then[rule_number[r]] = \
@@ -754,7 +754,7 @@ class LogStateControlSystemSimulation(object):
         rule_number = {}
         for rn, r in enumerate(self.sim.ctrl.rules):
             assert isinstance(r, Rule)
-            rule_number[r] = "RULE #%d" % rn
+            rule_number[r] = "RULE #{}".format(rn)
         for c in self.sim.ctrl.consequents:
             dict_consequents_terms_cut_rules_and_values[c] = {}
             for term in c.terms.values():
@@ -782,7 +782,7 @@ class LogStateControlSystemSimulation(object):
         rule_number = {}
         for rn, r in enumerate(self.sim.ctrl.rules):
             assert isinstance(r, Rule)
-            rule_number[r] = "RULE #%d" % rn
+            rule_number[r] = "RULE #{}".format(rn)
         for c in self.sim.ctrl.consequents:
             dict_consequents_terms_accumulation_membership_value[c] = {}
             for term in c.terms.values():
