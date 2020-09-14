@@ -1,9 +1,8 @@
 """
 Tests for the array padding functions.
 """
-from __future__ import division, absolute_import, print_function
-
 import os
+
 import numpy as np
 import skfuzzy.image
 from numpy.testing import (assert_allclose, TestCase, run_module_suite)
@@ -19,10 +18,10 @@ class TestDefocusLocalMeans(TestCase):
         result = defocus_local_means(im)
 
         expected = np.array(
-            [[3., 4., 2.75, 1.75, 7.],
-             [4., 2.25, 4.25, 3.75, 2.5],
-             [3., 5.25, 3., 3.5, 2.5],
-             [4.5, 4.5, 4.25, 2.75, 3.5]])
+           [[ 3. ,  4.  ,  2.75,  1.75,  7.  ],
+            [ 4. ,  2.25,  4.25,  3.75,  2.5 ],
+            [ 3. ,  5.25,  3.  ,  3.5 ,  2.5 ],
+            [ 4.5,  4.5 ,  4.25,  2.75,  3.5 ]])
 
         assert_allclose(result, expected)
 
