@@ -4,6 +4,7 @@ import numpy as np
 import numpy.testing as tst
 import skfuzzy as fuzz
 import skfuzzy.control as ctrl
+from pytest import approx, raises
 
 try:
     from numpy.testing.decorators import skipif
@@ -12,6 +13,8 @@ except AttributeError:
 except ModuleNotFoundError:
     from numpy.testing import dec
     skipif = dec.skipif
+
+from skfuzzy.control import EmptyMembershipError
 
 
 def test_tipping_problem():
@@ -143,7 +146,7 @@ def test_rule_order():
     r3 = ctrl.Rule(c['good'] | a['good'], d['good'], label='r3')
 
     ctrl_sys = ctrl.ControlSystem([r1, r2, r3])
-    resolved = [r for r in ctrl_sys.rules]
+    resolved = list(ctrl_sys.rules)
     assert resolved == [r1, r2, r3], ("Order given was: {0}, expected {1}"
                                       .format(resolved,
                                               [r1.label, r2.label, r3.label]))
@@ -169,11 +172,52 @@ def test_unresolvable_rule_order():
 
 @nose.with_setup(setup_rule_order)
 def test_bad_rules():
+    global a
+
     not_rules = ['me', 192238, 42, dict()]
     tst.assert_raises(ValueError, ctrl.ControlSystem, not_rules)
 
     testsystem = ctrl.ControlSystem()
     tst.assert_raises(ValueError, testsystem.addrule, a)
+
+
+def test_lenient_simulation():
+    x1 = ctrl.Antecedent(np.linspace(0, 10, 11), "x1")
+    x1.automf(3)  # term labels: poor, average, good
+    x2 = ctrl.Antecedent(np.linspace(0, 10, 11), "x2")
+    x2.automf(3)
+
+    y1 = ctrl.Consequent(np.linspace(0, 10, 11), "y1")
+    y1.automf(3)
+    y2 = ctrl.Consequent(np.linspace(0, 10, 11), "y2")
+    y2.automf(3)
+
+    r1 = ctrl.Rule(x1["poor"], y1["poor"])
+    r2 = ctrl.Rule(x2["good"], y2["good"])
+    sys = ctrl.ControlSystem([r1, r2])
+
+    sim = ctrl.ControlSystemSimulation(sys)
+    sim.input["x1"] = 1
+    sim.input["x2"] = 9
+    sim.compute()
+    assert set(sim.output.keys()) == {"y1", "y2"}
+    # print("- sim.output['y1']:", sim.output["y1"])
+    # print("- sim.output['y2']:", sim.output["y2"])
+    assert sim.output["y1"] == approx(1.722222)
+    assert sim.output["y2"] == approx(8.277778)
+
+    sim = ctrl.ControlSystemSimulation(sys)
+    sim.input["x1"] = 9
+    sim.input["x2"] = 9
+    with raises(EmptyMembershipError):
+        sim.compute()
+
+    sim = ctrl.ControlSystemSimulation(sys, lenient=True)
+    sim.input["x1"] = 9
+    sim.input["x2"] = 9
+    sim.compute()
+    assert set(sim.output.keys()) == {"y2"}
+    assert sim.output["y2"] == approx(8.277778)
 
 
 def test_multiple_rules_same_consequent_term():
