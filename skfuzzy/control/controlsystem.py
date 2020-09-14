@@ -547,15 +547,12 @@ class ControlSystemSimulation(object):
             print("RULE #{}:\n  {!s}\n".format(rn, r))
 
             print("  Aggregation (IF-clause):")
-            for cnt in range(len(
-                log_state.dict_rules_aggregation_if_membership_values()[
-                    rule_number[r]])):
-
-                for term_full_label, term_membership_value in \
-                        log_state.dict_rules_aggregation_if_membership_values()[
-                            rule_number[r]][cnt].items():
+            data = log_state.dict_rules_aggregation_if_membership_values()[
+                    rule_number[r]]
+            for lv_pairs in data:
+                for term_full_label, term_ms_value in lv_pairs.items():
                     print("  - {0:<55}: {1}".format(term_full_label,
-                                                    term_membership_value))
+                                                    term_ms_value))
 
             for antecedent, aggregate_firing in \
                     log_state.dict_rules_aggregation_if_aggregate_firing()[
@@ -598,14 +595,14 @@ class ControlSystemSimulation(object):
         print("==============================")
         for c in log_state.consequents:
             print("{!s:<36} = {}"
-                .format(c, log_state.dict_consequents_crisp_value()[c]))
+                  .format(c, log_state.dict_consequents_crisp_value()[c]))
 
             for term_label, dict_cut_rules_values in \
                 log_state.dict_consequents_terms_cut_rules_and_values()[c]\
                     .items():
                 print("  %s:" % term_label)
                 for rule_number_cut_rule, cut_value \
-                    in dict_cut_rules_values.items():
+                        in dict_cut_rules_values.items():
                     print("    {0:>32} : {1}".format(rule_number_cut_rule,
                                                      cut_value))
                 for accu, term_membership_value in \
