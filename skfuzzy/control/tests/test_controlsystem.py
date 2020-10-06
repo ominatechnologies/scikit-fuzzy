@@ -206,7 +206,7 @@ def test_lenient_simulation():
     assert sim.output["y1"] == approx(8.333333)
     assert sim.output["y2"] == approx(8.333333)
 
-    sim = ctrl.ControlSystemSimulation(sys)
+    sim = ctrl.ControlSystemSimulation(sys, lenient=False)
     sim.input["x1"] = 10
     sim.input["x2"] = 0
     with raises(EmptyMembershipError):
@@ -235,7 +235,7 @@ def test_cached_lenient_simulation():
     r2 = ctrl.Rule(x2["poor"], y2["good"])
     sys = ctrl.ControlSystem([r1, r2])
 
-    sim = ctrl.ControlSystemSimulation(sys, lenient=True)
+    sim = ctrl.ControlSystemSimulation(sys)
     sim.input["x1"] = 10
     sim.input["x2"] = 0
     sim.compute()
@@ -547,41 +547,6 @@ def test_complex_system():
 
     # Ensure results are within expected limits
     np.testing.assert_allclose(z1, expected)
-
-
-def test_simulation_with_standard_values_1():
-    x1 = ctrl.Antecedent(np.linspace(0, 10, 11), "x1")
-    x1.automf(3)  # term labels: poor, average, good
-    x2 = ctrl.Antecedent(np.linspace(0, 10, 11), "x2")
-    x2.automf(3)
-
-    y1 = ctrl.Consequent(np.linspace(0, 10, 11), "y1")
-    y1.automf(3)
-
-    r1 = ctrl.Rule(x1["poor"], y1["good"])
-    r2 = ctrl.Rule(x1["average"], y1["average"])
-    r3 = ctrl.Rule(x1["good"], y1["poor"])
-    sys = ctrl.ControlSystem([r1, r2, r3])
-
-    sim = ctrl.ControlSystemSimulation(sys)
-
-    sim.input["x1"] = "poor"
-    sim.compute()
-    assert set(sim.output.keys()) == {"y1"}
-    # print("- sim.output['y1']:", sim.output["y1"])
-    assert sim.output["y1"] == approx(8.333333)
-
-    sim.input["x1"] = "average"
-    sim.compute()
-    assert set(sim.output.keys()) == {"y1"}
-    # print("- sim.output['y1']:", sim.output["y1"])
-    assert sim.output["y1"] == approx(5)
-
-    sim.input["x1"] = "good"
-    sim.compute()
-    assert set(sim.output.keys()) == {"y1"}
-    # print("- sim.output['y1']:", sim.output["y1"])
-    assert sim.output["y1"] == approx(1.666667)
 
 
 if __name__ == '__main__':
