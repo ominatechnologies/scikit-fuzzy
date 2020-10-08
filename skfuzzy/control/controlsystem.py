@@ -530,12 +530,6 @@ class ControlSystemSimulation(object):
             ):
                 print("  - {:<32}: {}".format(label, ms_value))
         print("")
-        # for v in self.ctrl.antecedents:
-        #     print("{!s:<35} = {}".format(v, v.input[self]))
-        #     for term in v.terms.values():
-        #         print("  - {:<32}: {}".format(term.label,
-        #                                         term.membership_value[self]))
-        # print("")
         print("=======")
         print(" Rules ")
         print("=======")
@@ -566,27 +560,6 @@ class ControlSystemSimulation(object):
                 print("    {!s:>54} : {}".format(consequent, activation))
             print("")
         print("")
-        # rule_number = {}
-        # for rn, r in enumerate(self.ctrl.rules):
-        #     assert isinstance(r, Rule)
-        #     rule_number[r] = "RULE #{}".format(rn)
-        #     print("RULE #{}:\n  {}\n".format(rn, r))
-        #
-        #     print("  Aggregation (IF-clause):")
-        #     for term in r.antecedent_terms:
-        #         assert isinstance(term, Term)
-        #         print("  - {0:<55}: {1}".format(term.full_label,
-        #                                         term.membership_value[self]))
-        #     print("    {0:>54} = {1}".format(str(r.antecedent),
-        #                                      r.aggregate_firing[self]))
-        #
-        #     print("  Activation (THEN-clause):")
-        #     for c in r.consequent:
-        #         assert isinstance(c, WeightedTerm)
-        #         print("    {0:>54} : {1}".format(str(c),
-        #                                          c.activation[self]))
-        #     print("")
-        # print("")
         print("==============================")
         print(" Intermediaries and Conquests ")
         print("==============================")
@@ -606,21 +579,6 @@ class ControlSystemSimulation(object):
                 ):
                     print("    {!s:>32} : {}".format(accu, ms_value))
             print("")
-        # for c in self.ctrl.consequents:
-        #     print("{0:<36} = {1}".format(
-        #         str(c), CrispValueCalculator(c, self).defuzz()))
-        #
-        #     for term in c.terms.values():
-        #         print("  %s:" % term.label)
-        #         for cut_rule, cut_value in term.cuts[self].items():
-        #             if cut_rule not in rule_number.keys():
-        #                 continue
-        #             print("    {0:>32} : {1}".format(rule_number[cut_rule],
-        #                                              cut_value))
-        #         accu = "Accumulate using %s" % c.accumulation_method.__name__
-        #         print("    {0:>32} : {1}".format(str(accu),
-        #                                          term.membership_value[self]))
-        #     print("")
 
 
 class LogStateControlSystemSimulation(object):
