@@ -1,3 +1,6 @@
+from io import StringIO
+from unittest.mock import patch
+
 import networkx
 import nose
 import numpy as np
@@ -547,6 +550,212 @@ def test_complex_system():
 
     # Ensure results are within expected limits
     np.testing.assert_allclose(z1, expected)
+
+
+def test_simulation_with_standard_values_1():
+    x1 = ctrl.Antecedent(np.linspace(0, 10, 11), "x1")
+    x1.automf(3)  # term labels: poor, average, good
+    x2 = ctrl.Antecedent(np.linspace(0, 10, 11), "x2")
+    x2.automf(3)
+
+    y1 = ctrl.Consequent(np.linspace(0, 10, 11), "y1")
+    y1.automf(3)
+
+    r1 = ctrl.Rule(x1["poor"], y1["good"])
+    r2 = ctrl.Rule(x1["average"], y1["average"])
+    r3 = ctrl.Rule(x1["good"], y1["poor"])
+    sys = ctrl.ControlSystem([r1, r2, r3])
+
+    sim = ctrl.ControlSystemSimulation(sys)
+
+    sim.input["x1"] = "poor"
+    sim.compute()
+    assert set(sim.output.keys()) == {"y1"}
+    # print("- sim.output['y1']:", sim.output["y1"])
+    assert sim.output["y1"] == approx(8.333333)
+
+    sim.input["x1"] = "average"
+    sim.compute()
+    assert set(sim.output.keys()) == {"y1"}
+    # print("- sim.output['y1']:", sim.output["y1"])
+    assert sim.output["y1"] == approx(5)
+
+    sim.input["x1"] = "good"
+    sim.compute()
+    assert set(sim.output.keys()) == {"y1"}
+    # print("- sim.output['y1']:", sim.output["y1"])
+    assert sim.output["y1"] == approx(1.666667)
+
+
+@patch('sys.stdout', new_callable=StringIO)
+def test_print_state_for_complex_system(mock_stdout):
+    # A much more complex system, run multiple times & with array inputs
+    universe = np.linspace(-2, 2, 5)
+    error = ctrl.Antecedent(universe, 'error')
+    delta = ctrl.Antecedent(universe, 'delta')
+    output = ctrl.Consequent(universe, 'output')
+
+    names = ['nb', 'ns', 'ze', 'ps', 'pb']
+    error.automf(names=names)
+    delta.automf(names=names)
+    output.automf(names=names)
+
+    # The rulebase:
+    # rule 1:  IF e = ZE AND delta = ZE THEN output = ZE
+    # rule 2:  IF e = ZE AND delta = SP THEN output = SN
+    # rule 3:  IF e = SN AND delta = SN THEN output = LP
+    # rule 4:  IF e = LP OR  delta = LP THEN output = LN
+
+    rule0 = ctrl.Rule(antecedent=((error['nb'] & delta['nb']) |
+                                  (error['ns'] & delta['nb']) |
+                                  (error['nb'] & delta['ns'])),
+                      consequent=output['nb'], label='rule nb')
+
+    rule1 = ctrl.Rule(antecedent=((error['nb'] & delta['ze']) |
+                                  (error['nb'] & delta['ps']) |
+                                  (error['ns'] & delta['ns']) |
+                                  (error['ns'] & delta['ze']) |
+                                  (error['ze'] & delta['ns']) |
+                                  (error['ze'] & delta['nb']) |
+                                  (error['ps'] & delta['nb'])),
+                      consequent=output['ns'], label='rule ns')
+
+    rule2 = ctrl.Rule(antecedent=((error['nb'] & delta['pb']) |
+                                  (error['ns'] & delta['ps']) |
+                                  (error['ze'] & delta['ze']) |
+                                  (error['ps'] & delta['ns']) |
+                                  (error['pb'] & delta['nb'])),
+                      consequent=output['ze'], label='rule ze')
+
+    rule3 = ctrl.Rule(antecedent=((error['ns'] & delta['pb']) |
+                                  (error['ze'] & delta['pb']) |
+                                  (error['ze'] & delta['ps']) |
+                                  (error['ps'] & delta['ps']) |
+                                  (error['ps'] & delta['ze']) |
+                                  (error['pb'] & delta['ze']) |
+                                  (error['pb'] & delta['ns'])),
+                      consequent=output['ps'], label='rule ps')
+
+    rule4 = ctrl.Rule(antecedent=((error['ps'] & delta['pb']) |
+                                  (error['pb'] & delta['pb']) |
+                                  (error['pb'] & delta['ps'])),
+                      consequent=output['pb'], label='rule pb')
+
+    system = ctrl.ControlSystem(rules=[rule0, rule1, rule2, rule3, rule4])
+
+    sim = ctrl.ControlSystemSimulation(system, flush_after_run=21 * 21 + 1)
+
+    upsampled = np.linspace(-2, 2, 21)
+    x, y = np.meshgrid(upsampled, upsampled)
+    z = np.zeros_like(x)
+
+    # Loop through the system 21*21 times to collect the control surface
+    for i in range(21):
+        for j in range(21):
+            sim.input['error'] = x[i, j]
+            sim.input['delta'] = y[i, j]
+            sim.compute()
+            z[i, j] = sim.output['output']
+
+    sim.print_state()
+
+    # Antecedent testing
+    assert 'Antecedents' in mock_stdout.getvalue()
+    assert 'Antecedent: error' in mock_stdout.getvalue()
+    assert 'Antecedent: delta' in mock_stdout.getvalue()
+
+    # Rules testing
+    assert 'Rules' in mock_stdout.getvalue()
+    assert 'RULE #0:' in mock_stdout.getvalue()
+    assert 'IF ((error[nb] AND delta[nb]) OR (error[ns] AND delta[nb])) ' + \
+           'OR (error[nb] AND delta[ns]) THEN output[nb]' \
+           in mock_stdout.getvalue()
+    assert 'Aggregation (IF-clause):' in mock_stdout.getvalue()
+    assert 'Activation (THEN-clause):' in mock_stdout.getvalue()
+    assert 'RULE #1:' in mock_stdout.getvalue()
+    assert 'RULE #2:' in mock_stdout.getvalue()
+    assert 'RULE #3:' in mock_stdout.getvalue()
+    assert 'RULE #4:' in mock_stdout.getvalue()
+
+    # Intermediaries and Conquests testing
+    assert 'Intermediaries and Conquests' in mock_stdout.getvalue()
+    assert 'Consequent: output' in mock_stdout.getvalue()
+    assert 'Accumulate using accumulation_max' in mock_stdout.getvalue()
+
+    sim.reset()
+
+
+def test_print_state(print_state=False):
+    # A much more complex system, run multiple times & with array inputs
+    universe = np.linspace(-2, 2, 5)
+    error = ctrl.Antecedent(universe, 'error')
+    delta = ctrl.Antecedent(universe, 'delta')
+    output = ctrl.Consequent(universe, 'output')
+
+    names = ['nb', 'ns', 'ze', 'ps', 'pb']
+    error.automf(names=names)
+    delta.automf(names=names)
+    output.automf(names=names)
+
+    # The rulebase:
+    # rule 1:  IF e = ZE AND delta = ZE THEN output = ZE
+    # rule 2:  IF e = ZE AND delta = SP THEN output = SN
+    # rule 3:  IF e = SN AND delta = SN THEN output = LP
+    # rule 4:  IF e = LP OR  delta = LP THEN output = LN
+
+    rule0 = ctrl.Rule(antecedent=((error['nb'] & delta['nb']) |
+                                  (error['ns'] & delta['nb']) |
+                                  (error['nb'] & delta['ns'])),
+                      consequent=output['nb'], label='rule nb')
+
+    rule1 = ctrl.Rule(antecedent=((error['nb'] & delta['ze']) |
+                                  (error['nb'] & delta['ps']) |
+                                  (error['ns'] & delta['ns']) |
+                                  (error['ns'] & delta['ze']) |
+                                  (error['ze'] & delta['ns']) |
+                                  (error['ze'] & delta['nb']) |
+                                  (error['ps'] & delta['nb'])),
+                      consequent=output['ns'], label='rule ns')
+
+    rule2 = ctrl.Rule(antecedent=((error['nb'] & delta['pb']) |
+                                  (error['ns'] & delta['ps']) |
+                                  (error['ze'] & delta['ze']) |
+                                  (error['ps'] & delta['ns']) |
+                                  (error['pb'] & delta['nb'])),
+                      consequent=output['ze'], label='rule ze')
+
+    rule3 = ctrl.Rule(antecedent=((error['ns'] & delta['pb']) |
+                                  (error['ze'] & delta['pb']) |
+                                  (error['ze'] & delta['ps']) |
+                                  (error['ps'] & delta['ps']) |
+                                  (error['ps'] & delta['ze']) |
+                                  (error['pb'] & delta['ze']) |
+                                  (error['pb'] & delta['ns'])),
+                      consequent=output['ps'], label='rule ps')
+
+    rule4 = ctrl.Rule(antecedent=((error['ps'] & delta['pb']) |
+                                  (error['pb'] & delta['pb']) |
+                                  (error['pb'] & delta['ps'])),
+                      consequent=output['pb'], label='rule pb')
+
+    system = ctrl.ControlSystem(rules=[rule0, rule1, rule2, rule3, rule4])
+
+    sim = ctrl.ControlSystemSimulation(system, flush_after_run=21 * 21 + 1)
+
+    upsampled = np.linspace(-2, 2, 21)
+    x, y = np.meshgrid(upsampled, upsampled)
+    z = np.zeros_like(x)
+
+    # Loop through the system 21*21 times to collect the control surface
+    for i in range(21):
+        for j in range(21):
+            sim.input['error'] = x[i, j]
+            sim.input['delta'] = y[i, j]
+            sim.compute()
+            z[i, j] = sim.output['output']
+    if print_state:
+        sim.print_state()
+    sim.reset()
 
 
 if __name__ == '__main__':

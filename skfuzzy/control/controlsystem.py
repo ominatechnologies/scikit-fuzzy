@@ -517,59 +517,238 @@ class ControlSystemSimulation(object):
         """
         if next(self.ctrl.consequents).output[self] is None:
             raise ValueError("Call compute method first.")
+        log_state = LogStateControlSystemSimulation(self)
 
         print("=============")
         print(" Antecedents ")
         print("=============")
-        for v in self.ctrl.antecedents:
-            print("{!s:<35} = {}".format(v, v.input[self]))
-            for term in v.terms.values():
-                print("  - {:<32}: {}".format(term.label,
-                                              term.membership_value[self]))
+        for v in log_state.antecedents:
+            print("{!s:<35} = {}"
+                  .format(v, log_state.antecedent_crisp_values()[str(v)]))
+            for label, ms_value in (
+                log_state.antecedent_term_ms_values()[str(v)].items()
+            ):
+                print("  - {:<32}: {}".format(label, ms_value))
         print("")
         print("=======")
         print(" Rules ")
         print("=======")
         rule_number = {}
-        for rn, r in enumerate(self.ctrl.rules):
+        for rn, r in enumerate(log_state.rules):
             assert isinstance(r, Rule)
             rule_number[r] = "RULE #{}".format(rn)
             print("RULE #{}:\n  {!s}\n".format(rn, r))
 
             print("  Aggregation (IF-clause):")
-            for term in r.antecedent_terms:
-                assert isinstance(term, Term)
-                print("  - {0:<55}: {1}".format(term.full_label,
-                                                term.membership_value[self]))
-            print("    {!s:>54} = {}".format(r.antecedent,
-                                             r.aggregate_firing[self]))
+            data = log_state.rules_antecedent_term_ms_values()[rule_number[r]]
+            for lv_pairs in data:
+                for full_label, ms_value in lv_pairs.items():
+                    print("  - {0:<55}: {1}".format(full_label, ms_value))
+
+            for antecedent, aggregate_firing in (
+                log_state.rules_antecedent_agg_firing()[rule_number[r]].items()
+            ):
+                print("    {!s:>54} = {}".format(antecedent, aggregate_firing))
 
             print("  Activation (THEN-clause):")
-            for c in r.consequent:
-                assert isinstance(c, WeightedTerm)
-                print("    {!s:>54} : {}".format(c, c.activation[self]))
+
+            for consequent, activation in (
+                log_state.rules_consequent_act()[rule_number[r]].items()
+            ):
+                for c in r.consequent:
+                    assert isinstance(c, WeightedTerm)
+                print("    {!s:>54} : {}".format(consequent, activation))
             print("")
         print("")
-
         print("==============================")
         print(" Intermediaries and Conquests ")
         print("==============================")
-        for c in self.ctrl.consequents:
+        for c in log_state.consequents:
             print("{!s:<36} = {}"
-                  .format(c, CrispValueCalculator(c, self).defuzz()))
+                  .format(c, log_state.consequent_crisp_values()[c]))
 
-            for term in c.terms.values():
-                print("  {}:".format(term.label))
-                for cut_rule, cut_value in term.cuts[self].items():
-                    if cut_rule not in rule_number.keys():
-                        continue
-                    print("    {:>32} : {}".format(rule_number[cut_rule],
-                                                   cut_value))
-                accu = "Accumulate using {}".format(
-                    c.accumulation_method.__name__)
-                print("    {!s:>32} : {}".format(accu,
-                                                 term.membership_value[self]))
+            for label, rule_ms_value in (
+                log_state.consequent_term_rules_ms_values()[c].items()
+            ):
+                print("  %s:" % label)
+                for rule, ms_value in rule_ms_value.items():
+                    print("    {0:>32} : {1}".format(rule, ms_value))
+                for accu, ms_value in (
+                    log_state.consequent_term_accu_ms_values()[c][label]
+                        .items()
+                ):
+                    print("    {!s:>32} : {}".format(accu, ms_value))
             print("")
+
+
+class LogStateControlSystemSimulation(object):
+    """
+    Logs the state of a ControlSystemSimulation.
+
+    Parameters
+    ----------
+    sim : ControlSystemSimulation
+        The simulation which holds all necessary data for this calculation.
+    """
+
+    def __init__(self, sim):
+        """
+        Initialization method for LogStateControlSystemSimulation.
+        """ + '\n'.join(LogStateControlSystemSimulation.__doc__.split('\n'
+                                                                      )[1:])
+        assert isinstance(sim, ControlSystemSimulation)
+        self.sim = sim
+        if next(self.sim.ctrl.consequents).output[self.sim] is None:
+            raise ValueError("Call compute method first.")
+        self.antecedents = self.sim.ctrl.antecedents
+        self.rules = self.sim.ctrl.rules
+        self.consequents = self.sim.ctrl.consequents
+
+    def antecedent_crisp_values(self):
+        """
+        Returns a mapping from the antecedents to their crisp values.
+        """
+        results = {}
+        for v in self.sim.ctrl.antecedents:
+            results[str(v)] = str(v.input[self.sim])
+        return results
+
+    def antecedent_term_ms_values(self):
+        """
+        Returns a mapping from the antecedents to their fuzzified
+        representation, which is a mapping from the labels of their terms to
+        their membership values.
+        """
+        results = {}
+        for v in self.sim.ctrl.antecedents:
+            results[str(v)] = {
+                term.label: term.membership_value[self.sim]
+                for term in v.terms.values()
+            }
+        return results
+
+    def rules_numbered(self):
+        """
+        Returns a mapping from the rules identified by their index in the
+        system to the actual rules.
+        """
+        results = {}
+        rule_number = {}
+        for rn, r in enumerate(self.sim.ctrl.rules):
+            assert isinstance(r, Rule)
+            rule_number[r] = "RULE #{}".format(rn)
+            results[rule_number[r]] = r
+        return results
+
+    def rules_antecedent_term_ms_values(self):
+        """
+        Returns a mapping from the rules identified by their index in the
+        system from the full labels of their antecedent terms to their
+        membership values.
+        """
+        results = {}
+        rule_number = {}
+        for rn, r in enumerate(self.sim.ctrl.rules):
+            assert isinstance(r, Rule)
+            rule_number[r] = "RULE #{}".format(rn)
+            for term in r.antecedent_terms:
+                assert isinstance(term, Term)
+            results[rule_number[r]] = [
+                {term.full_label: term.membership_value[self.sim]}
+                for term in r.antecedent_terms
+            ]
+        return results
+
+    def rules_antecedent_agg_firing(self):
+        """
+        Returns a mapping from the rules identified by their index in the
+        system from their antecedents to their aggregate firing values.
+        """
+        results = {}
+        rule_number = {}
+        for rn, r in enumerate(self.sim.ctrl.rules):
+            assert isinstance(r, Rule)
+            rule_number[r] = "RULE #{}".format(rn)
+            for term in r.antecedent_terms:
+                assert isinstance(term, Term)
+            results[rule_number[r]] = {
+                str(r.antecedent): r.aggregate_firing[self.sim]
+            }
+        return results
+
+    def rules_consequent_act(self):
+        """
+        Returns a mapping from the rules identified by their index in the
+        system from their consequents to their activation values.
+        """
+        results = {}
+        rule_number = {}
+        for rn, r in enumerate(self.sim.ctrl.rules):
+            assert isinstance(r, Rule)
+            rule_number[r] = "RULE #{}".format(rn)
+            for c in r.consequent:
+                assert isinstance(c, WeightedTerm)
+            results[rule_number[r]] = {
+                str(c): c.activation[self.sim] for c in r.consequent
+            }
+        return results
+
+    def consequent_crisp_values(self):
+        """
+        Returns a mapping from the consequents to their crisp values.
+        """
+        results = {}
+        for c in self.sim.ctrl.consequents:
+            results[c] = CrispValueCalculator(c, self.sim).defuzz()
+        return results
+
+    def consequent_term_rules_ms_values(self):
+        """
+        Returns a mapping from the consequents to their fuzzified
+        representation for every rule, which is a mapping from the labels of
+        their terms from the rules identified by their index in the system to
+        their membership values.
+        """
+        results = {}
+        rule_number = {}
+        for rn, r in enumerate(self.sim.ctrl.rules):
+            assert isinstance(r, Rule)
+            rule_number[r] = "RULE #{}".format(rn)
+        for c in self.sim.ctrl.consequents:
+            results[c] = {}
+            for term in c.terms.values():
+                results[c][term.label] = {}
+                for cut_rule, cut_value in term.cuts[self.sim].items():
+                    output_cut_rule = 'output[' + cut_rule.split()[1] + ']'
+                    if output_cut_rule not in str(rule_number.keys()):
+                        continue
+                    key_cut_rule = [key for key in rule_number.keys()
+                                    if output_cut_rule in str(key)][0]
+                    results[c][term.label][
+                        rule_number[key_cut_rule]
+                    ] = cut_value
+        return results
+
+    def consequent_term_accu_ms_values(self):
+        """
+        Returns a mapping from the consequents to their fuzzified
+        representation for every accumulation method, which is a mapping from
+        the labels of their terms from the accumulation method to their
+        membership values.
+        """
+        results = {}
+        rule_number = {}
+        for rn, r in enumerate(self.sim.ctrl.rules):
+            assert isinstance(r, Rule)
+            rule_number[r] = "RULE #{}".format(rn)
+        for c in self.sim.ctrl.consequents:
+            results[c] = {}
+            for term in c.terms.values():
+                accu = "Accumulate using %s" % c.accumulation_method.__name__
+                results[c][term.label] = {
+                    accu: term.membership_value[self.sim]
+                }
+        return results
 
 
 class CrispValueCalculator(object):
