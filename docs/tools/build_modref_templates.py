@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """Script to auto-generate our API docs."""
 # stdlib imports
-import sys
 import os
+import sys
 
 # local imports
 from apigen import ApiDocWriter
@@ -14,6 +14,7 @@ from distutils.version import LooseVersion
 def abort(error):
     print('*WARNING* API documentation not generated: %s' % error)
     exit()
+
 
 if __name__ == '__main__':
     package = 'skfuzzy'

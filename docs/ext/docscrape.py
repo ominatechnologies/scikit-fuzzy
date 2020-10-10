@@ -459,11 +459,18 @@ class FunctionDoc(NumpyDocString):
 
 
 class ClassDoc(NumpyDocString):
-    def __init__(self, cls, doc=None, modulename='', func_doc=FunctionDoc,
-                 config={}):
+    def __init__(self,
+                 cls,
+                 doc=None,
+                 modulename='',
+                 func_doc=FunctionDoc,
+                 config=None):
         if not inspect.isclass(cls) and cls is not None:
             raise ValueError("Expected a class or None, but got %r" % cls)
         self._cls = cls
+
+        if config is None:
+            config = dict()
 
         if modulename and not modulename.endswith('.'):
             modulename += '.'
