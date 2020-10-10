@@ -27,8 +27,8 @@ class ControlSystem(object):
     ----------
     rules : Rule or iterable of Rules, optional
         If provided, the system is initialized and populated with a set of
-        fuzzy Rules (see ``skfuzzy.control.Rule``). This is optional. If
-        omitted the ControlSystem can be built interactively.
+        fuzzy Rules (see :class:`Rule`). This is optional. If omitted the
+        ControlSystem can be built interactively.
     """
 
     def __init__(self, rules=None):

@@ -44,7 +44,7 @@ logo:
 
 api:
 	@mkdir -p source/api
-	$(PYTHON) tools/build_modref_templates.py
+	@cd source; $(PYTHON) ../tools/build_modref_templates.py
 	@echo "Build API docs...done."
 
 random_gallery:
